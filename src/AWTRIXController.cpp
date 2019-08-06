@@ -1247,6 +1247,7 @@ void loop()
 						updateMatrix(myByteForMatrix, SavemMessageLength);
 						awtrixFound = false;
 					}
+					sendToMatrixPointer++;
 				}
 				else
 				{
