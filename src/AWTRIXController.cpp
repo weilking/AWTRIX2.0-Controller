@@ -61,8 +61,6 @@ int myTime2; //need for loop
 int myTime3; //need for loop3
 int myCounter;
 int myCounter2;
-boolean getLength = true;
-int prefix = -5;
 boolean awtrixFound = false;
 int myPointer[14];
 uint32_t messageLength = 0;
@@ -70,10 +68,9 @@ uint32_t SavemMessageLength = 0;
 
 //USB Connection:
 byte myBytes[1000];
+byte myByteForMatrix[500];
 int bufferpointer;
-
-//Zum speichern...
-int cfgStart = 0;
+int sendToMatrixPointer;
 
 //flag for saving data
 bool shouldSaveConfig = false;
@@ -485,7 +482,7 @@ int GetRSSIasQuality(int rssi)
 	return quality;
 }
 
-void updateMatrix(byte payload[], int length)
+void updateMatrix(byte *payload, int length)
 {
 	int y_offset = 5;
 	if (firstStart)
@@ -1171,15 +1168,13 @@ void setup()
 	matrix->setCursor(7, 6);
 
 	bufferpointer = 0;
+	sendToMatrixPointer = 0;
 
 	myTime = millis() - 500;
 	myTime2 = millis() - 1000;
 	myTime3 = millis() - 500;
 	myCounter = 0;
 	myCounter2 = 0;
-
-	getLength = true;
-	prefix = -5;
 
 	if (!USBConnection)
 	{
@@ -1227,7 +1222,6 @@ void loop()
 	{
 		if (USBConnection)
 		{
-			//third try
 			if (Serial.available() > 0)
 			{
 				//read and fill in ringbuffer
@@ -1244,18 +1238,33 @@ void loop()
 						myPointer[i] = bufferpointer - i;
 					}
 				}
-				//prefix from "awtrix" == 6?
-				if (myBytes[myPointer[13]] == 0 && myBytes[myPointer[12]] == 0 && myBytes[myPointer[11]] == 0 && myBytes[myPointer[10]] == 6)
+
+				if (awtrixFound)
 				{
-					//"awtrix" ?
-					if (myBytes[myPointer[9]] == 97 && myBytes[myPointer[8]] == 119 && myBytes[myPointer[7]] == 116 && myBytes[myPointer[6]] == 114 && myBytes[myPointer[5]] == 105 && myBytes[myPointer[4]] == 120)
+					myByteForMatrix[sendToMatrixPointer] = myBytes[bufferpointer];
+					if (messageLength == 0)
 					{
-						messageLength = (int(myBytes[myPointer[3]]) << 24) + (int(myBytes[myPointer[2]]) << 16) + (int(myBytes[myPointer[1]]) << 8) + int(myBytes[myPointer[0]]);
-						SavemMessageLength = messageLength;
-						awtrixFound = true;
+						updateMatrix(myByteForMatrix, SavemMessageLength);
+						awtrixFound = false;
+					}
+				}
+				else
+				{
+					if (myBytes[myPointer[13]] == 0 && myBytes[myPointer[12]] == 0 && myBytes[myPointer[11]] == 0 && myBytes[myPointer[10]] == 6)
+					{
+						//"awtrix" ?
+						if (myBytes[myPointer[9]] == 97 && myBytes[myPointer[8]] == 119 && myBytes[myPointer[7]] == 116 && myBytes[myPointer[6]] == 114 && myBytes[myPointer[5]] == 105 && myBytes[myPointer[4]] == 120)
+						{
+							messageLength = (int(myBytes[myPointer[3]]) << 24) + (int(myBytes[myPointer[2]]) << 16) + (int(myBytes[myPointer[1]]) << 8) + int(myBytes[myPointer[0]]);
+							SavemMessageLength = messageLength;
+							awtrixFound = true;
+						}
 					}
 				}
 
+				//prefix from "awtrix" == 6?
+				
+				/*
 				if (awtrixFound && messageLength == 0)
 				{
 					byte tempData[SavemMessageLength];
@@ -1275,6 +1284,8 @@ void loop()
 					updateMatrix(tempData, SavemMessageLength);
 					awtrixFound = false;
 				}
+				*/
+
 				bufferpointer++;
 				if (bufferpointer == 1000)
 				{
