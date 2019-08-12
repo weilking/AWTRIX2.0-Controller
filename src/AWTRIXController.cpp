@@ -703,7 +703,7 @@ void updateMatrix(byte *payload, int length)
 		matrix->setTextColor(matrix->Color(0, 255, 50));
 		matrix->print("SAVED!");
 		matrix->show();
-		
+
 		//Answer to Server
 		StaticJsonBuffer<400> jsonBuffer;
 		JsonObject &root = jsonBuffer.createObject();
@@ -1255,13 +1255,14 @@ void loop()
 				if (awtrixFound)
 				{
 					myByteForMatrix[sendToMatrixPointer] = myBytes[bufferpointer];
+					sendToMatrixPointer++;
 					if (messageLength == 0)
 					{
 						updateMatrix(myByteForMatrix, SavemMessageLength);
 						awtrixFound = false;
 						sendToMatrixPointer = 0;
 					}
-					sendToMatrixPointer++;
+					
 				}
 				else
 				{
