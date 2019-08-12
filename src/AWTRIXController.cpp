@@ -181,7 +181,6 @@ void sendToServer(String s)
 	else
 	{
 		client.publish("matrixClient", s.c_str());
-
 	}
 }
 
@@ -689,6 +688,15 @@ void updateMatrix(byte *payload, int length)
 	}
 	case 14:
 	{
+		//Answer to Server
+		StaticJsonBuffer<400> jsonBuffer;
+		JsonObject &root = jsonBuffer.createObject();
+		root["type"] = "MatrixSaved";
+		root["state"] = "OK";
+		String JS;
+		root.printTo(JS);
+		sendToServer(JS);
+
 		//Command 14: SaveConfig
 		USBConnection = (int)payload[1];
 		tempState = (int)payload[2];
@@ -704,14 +712,6 @@ void updateMatrix(byte *payload, int length)
 		matrix->print("SAVED!");
 		matrix->show();
 
-		//Answer to Server
-		StaticJsonBuffer<400> jsonBuffer;
-		JsonObject &root = jsonBuffer.createObject();
-		root["type"] = "MatrixSaved";
-		root["state"] = "OK";
-		String JS;
-		root.printTo(JS);
-		sendToServer(JS);
 		delay(2000);
 
 		if (saveConfig())
