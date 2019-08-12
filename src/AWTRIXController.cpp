@@ -181,6 +181,7 @@ void sendToServer(String s)
 	else
 	{
 		client.publish("matrixClient", s.c_str());
+
 	}
 }
 
@@ -682,11 +683,13 @@ void updateMatrix(byte *payload, int length)
 	}
 	case 13:
 	{
+		//Command 13: SetBrigthness
 		matrix->setBrightness(payload[1]);
 		break;
 	}
 	case 14:
 	{
+		//Command 14: SaveConfig
 		USBConnection = (int)payload[1];
 		tempState = (int)payload[2];
 		audioState = (int)payload[3];
@@ -700,7 +703,17 @@ void updateMatrix(byte *payload, int length)
 		matrix->setTextColor(matrix->Color(0, 255, 50));
 		matrix->print("SAVED!");
 		matrix->show();
+		
+		//Answer to Server
+		StaticJsonBuffer<400> jsonBuffer;
+		JsonObject &root = jsonBuffer.createObject();
+		root["type"] = "MatrixSaved";
+		root["state"] = "OK";
+		String JS;
+		root.printTo(JS);
+		sendToServer(JS);
 		delay(2000);
+
 		if (saveConfig())
 		{
 			ESP.reset();
