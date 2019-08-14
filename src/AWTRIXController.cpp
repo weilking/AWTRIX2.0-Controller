@@ -34,7 +34,7 @@ int audioState = false;	// 0 = false ; 1 = true
 int gestureState = false;  // 0 = false ; 1 = true
 int ldrState = 0;		   // 0 = None
 int USBConnection = false; // true = usb...
-int MatrixType = 1;
+char MatrixType[2]  = "1";
 int matrixTempCorrection = 0;
 
 String version = "0.13";
@@ -61,6 +61,8 @@ int myTime2; //need for loop
 int myTime3; //need for loop3
 int myCounter;
 int myCounter2;
+boolean getLength = true;
+int prefix = -5;
 boolean awtrixFound = false;
 int myPointer[14];
 uint32_t messageLength = 0;
@@ -68,9 +70,10 @@ uint32_t SavemMessageLength = 0;
 
 //USB Connection:
 byte myBytes[1000];
-byte myByteForMatrix[500];
 int bufferpointer;
-int sendToMatrixPointer;
+
+//Zum speichern...
+int cfgStart = 0;
 
 //flag for saving data
 bool shouldSaveConfig = false;
@@ -133,13 +136,12 @@ bool saveConfig()
 	DynamicJsonBuffer jsonBuffer;
 	JsonObject &json = jsonBuffer.createObject();
 	json["awtrix_server"] = awtrix_server;
-
+	json["MatrixType"] = MatrixType;
 	json["temp"] = tempState;
 	json["usbWifi"] = USBConnection;
 	json["ldr"] = ldrState;
 	json["gesture"] = gestureState;
 	json["audio"] = audioState;
-	json["MatrixType"] = MatrixType;
 	json["matrixCorrection"] = matrixTempCorrection;
 
 	File configFile = SPIFFS.open("/awtrix.json", "w");
@@ -482,7 +484,7 @@ int GetRSSIasQuality(int rssi)
 	return quality;
 }
 
-void updateMatrix(byte *payload, int length)
+void updateMatrix(byte payload[], int length)
 {
 	int y_offset = 5;
 	if (firstStart)
@@ -682,38 +684,34 @@ void updateMatrix(byte *payload, int length)
 	}
 	case 13:
 	{
-		//Command 13: SetBrigthness
 		matrix->setBrightness(payload[1]);
 		break;
 	}
 	case 14:
 	{
-		//Answer to Server
-		StaticJsonBuffer<400> jsonBuffer;
+
+		StaticJsonBuffer<50> jsonBuffer;
 		JsonObject &root = jsonBuffer.createObject();
 		root["type"] = "MatrixSaved";
-		root["state"] = "OK";
 		String JS;
 		root.printTo(JS);
 		sendToServer(JS);
 
-		//Command 14: SaveConfig
+
 		USBConnection = (int)payload[1];
 		tempState = (int)payload[2];
 		audioState = (int)payload[3];
 		gestureState = (int)payload[4];
 		ldrState = int(payload[5] << 8) + int(payload[6]);
-		MatrixType = (int)payload[7];
-		matrixTempCorrection = (int)payload[8];
+
+		matrixTempCorrection = (int)payload[7];
 
 		matrix->clear();
 		matrix->setCursor(6, 6);
 		matrix->setTextColor(matrix->Color(0, 255, 50));
 		matrix->print("SAVED!");
 		matrix->show();
-
 		delay(2000);
-
 		if (saveConfig())
 		{
 			ESP.reset();
@@ -909,7 +907,7 @@ void setup()
 				gestureState = json["gesture"].as<int>();
 				ldrState = json["ldr"].as<int>();
 				tempState = json["temp"].as<int>();
-				MatrixType = json["MatrixType"].as<int>();
+				strcpy(MatrixType, json["MatrixType"]);
 				matrixTempCorrection = json["matrixCorrection"].as<int>();
 			}
 			configFile.close();
@@ -923,7 +921,7 @@ void setup()
 		}
 	}
 
-	if (MatrixType)
+	if (MatrixType == "1")
 	{
 		matrix = new FastLED_NeoMatrix(leds, 32, 8, NEO_MATRIX_TOP + NEO_MATRIX_LEFT + NEO_MATRIX_COLUMNS + NEO_MATRIX_ZIGZAG);
 	}
@@ -1026,10 +1024,7 @@ void setup()
 		}
 		else
 		{
-			if (!USBConnection)
-			{
-				Serial.println("Could not begin SPIFFS");
-			}
+			Serial.println("Could not begin SPIFFS");
 		}
 		wifiManager.resetSettings();
 		ESP.reset();
@@ -1037,35 +1032,29 @@ void setup()
 
 	wifiManager.setAPStaticIPConfig(IPAddress(172, 217, 28, 1), IPAddress(172, 217, 28, 1), IPAddress(255, 255, 255, 0));
 	WiFiManagerParameter custom_awtrix_server("server", "AWTRIX Server", awtrix_server, 16);
+	WiFiManagerParameter custom_matrix_type("type", "Matrix Type", MatrixType, 2);
 	wifiManager.setSaveConfigCallback(saveConfigCallback);
 	wifiManager.setAPCallback(configModeCallback);
 	wifiManager.addParameter(&custom_awtrix_server);
+	wifiManager.addParameter(&custom_matrix_type);
 
 	hardwareAnimatedSearch(0, 24, 0);
 
 	if (!wifiManager.autoConnect("AWTRIX Controller", "awtrixxx"))
 	{
-		if (!USBConnection)
-		{
-			Serial.println("failed to connect and hit timeout");
-		}
+		Serial.println("failed to connect and hit timeout");
 		delay(3000);
 		//reset and try again, or maybe put it to deep sleep
 		ESP.reset();
 		delay(5000);
 	}
 
-	if (!USBConnection)
-	{
-		Serial.println("connected...yeey :)");
-	}
-
+	Serial.println("connected...yeey :)");
 	strcpy(awtrix_server, custom_awtrix_server.getValue());
+	strcpy(MatrixType, custom_matrix_type.getValue());
 
-	if (!USBConnection)
-	{
-		Serial.println(awtrix_server);
-	}
+	Serial.println(awtrix_server);
+
 	server.on("/", HTTP_GET, []() {
 		server.sendHeader("Connection", "close");
 		server.send(200, "text/html", serverIndex);
@@ -1151,14 +1140,13 @@ void setup()
 	{
 		pinMode(APDS9960_INT, INPUT);
 		attachInterrupt(APDS9960_INT, interruptRoutine, FALLING);
-		if (apds.init())
-		{
+		if(apds.init()){
 			hardwareAnimatedCheck(4, 29, 2);
 		}
 		else
 		{
 			hardwareAnimatedUncheck(4, 27, 1);
-		}
+		}	
 		apds.enableGestureSensor(true);
 	}
 	if (ldrState)
@@ -1181,13 +1169,15 @@ void setup()
 	matrix->setCursor(7, 6);
 
 	bufferpointer = 0;
-	sendToMatrixPointer = 0;
 
 	myTime = millis() - 500;
 	myTime2 = millis() - 1000;
 	myTime3 = millis() - 500;
 	myCounter = 0;
 	myCounter2 = 0;
+
+	getLength = true;
+	prefix = -5;
 
 	if (!USBConnection)
 	{
@@ -1235,6 +1225,7 @@ void loop()
 	{
 		if (USBConnection)
 		{
+			//third try
 			if (Serial.available() > 0)
 			{
 				//read and fill in ringbuffer
@@ -1251,36 +1242,18 @@ void loop()
 						myPointer[i] = bufferpointer - i;
 					}
 				}
-
-				if (awtrixFound)
-				{
-					myByteForMatrix[sendToMatrixPointer] = myBytes[bufferpointer];
-					sendToMatrixPointer++;
-					if (messageLength == 0)
-					{
-						updateMatrix(myByteForMatrix, SavemMessageLength);
-						awtrixFound = false;
-						sendToMatrixPointer = 0;
-					}
-					
-				}
-				else
-				{
-					if (myBytes[myPointer[13]] == 0 && myBytes[myPointer[12]] == 0 && myBytes[myPointer[11]] == 0 && myBytes[myPointer[10]] == 6)
-					{
-						//"awtrix" ?
-						if (myBytes[myPointer[9]] == 97 && myBytes[myPointer[8]] == 119 && myBytes[myPointer[7]] == 116 && myBytes[myPointer[6]] == 114 && myBytes[myPointer[5]] == 105 && myBytes[myPointer[4]] == 120)
-						{
-							messageLength = (int(myBytes[myPointer[3]]) << 24) + (int(myBytes[myPointer[2]]) << 16) + (int(myBytes[myPointer[1]]) << 8) + int(myBytes[myPointer[0]]);
-							SavemMessageLength = messageLength;
-							awtrixFound = true;
-						}
-					}
-				}
-
 				//prefix from "awtrix" == 6?
-				
-				/*
+				if (myBytes[myPointer[13]] == 0 && myBytes[myPointer[12]] == 0 && myBytes[myPointer[11]] == 0 && myBytes[myPointer[10]] == 6)
+				{
+					//"awtrix" ?
+					if (myBytes[myPointer[9]] == 97 && myBytes[myPointer[8]] == 119 && myBytes[myPointer[7]] == 116 && myBytes[myPointer[6]] == 114 && myBytes[myPointer[5]] == 105 && myBytes[myPointer[4]] == 120)
+					{
+						messageLength = (int(myBytes[myPointer[3]]) << 24) + (int(myBytes[myPointer[2]]) << 16) + (int(myBytes[myPointer[1]]) << 8) + int(myBytes[myPointer[0]]);
+						SavemMessageLength = messageLength;
+						awtrixFound = true;
+					}
+				}
+
 				if (awtrixFound && messageLength == 0)
 				{
 					byte tempData[SavemMessageLength];
@@ -1300,8 +1273,6 @@ void loop()
 					updateMatrix(tempData, SavemMessageLength);
 					awtrixFound = false;
 				}
-				*/
-
 				bufferpointer++;
 				if (bufferpointer == 1000)
 				{
