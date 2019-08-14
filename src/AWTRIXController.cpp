@@ -34,10 +34,10 @@ int audioState = false;	// 0 = false ; 1 = true
 int gestureState = false;  // 0 = false ; 1 = true
 int ldrState = 0;		   // 0 = None
 int USBConnection = false; // true = usb...
-char MatrixType[2]  = "0";
+bool MatrixType2  = false;
 int matrixTempCorrection = 0;
 
-String version = "0.15";
+String version = "0.13";
 char awtrix_server[16];
 
 IPAddress Server;
@@ -136,7 +136,7 @@ bool saveConfig()
 	DynamicJsonBuffer jsonBuffer;
 	JsonObject &json = jsonBuffer.createObject();
 	json["awtrix_server"] = awtrix_server;
-	json["MatrixType"] = MatrixType;
+	json["MatrixType"] = MatrixType2;
 	json["temp"] = tempState;
 	json["usbWifi"] = USBConnection;
 	json["ldr"] = ldrState;
@@ -155,10 +155,6 @@ bool saveConfig()
 		return false;
 	}
 
-	if (!USBConnection)
-	{
-		json.printTo(Serial);
-	}
 	json.printTo(configFile);
 	configFile.close();
 	//end save
@@ -741,13 +737,18 @@ void reconnect()
 {
 	if (!USBConnection)
 	{
+		
+	
+
 		while (!client.connected())
 		{
+			Serial.println("reconnecting");
 			String clientId = "AWTRIXController-";
 			clientId += String(random(0xffff), HEX);
 			hardwareAnimatedSearch(1, 28, 0);
 			if (client.connect(clientId.c_str()))
 			{
+				Serial.println("connected to server!");
 				client.subscribe("awtrixmatrix/#");
 				client.publish("matrixClient", "connected");
 			}
@@ -890,11 +891,6 @@ void setup()
 			configFile.readBytes(buf.get(), size);
 			DynamicJsonBuffer jsonBuffer;
 			JsonObject &json = jsonBuffer.parseObject(buf.get());
-			if (!USBConnection)
-			{
-				json.printTo(Serial);
-			}
-
 			if (json.success())
 			{
 				if (!USBConnection)
@@ -907,7 +903,7 @@ void setup()
 				gestureState = json["gesture"].as<int>();
 				ldrState = json["ldr"].as<int>();
 				tempState = json["temp"].as<int>();
-				strcpy(MatrixType, json["MatrixType"]);
+				MatrixType2 = json["MatrixType"].as<bool>();
 				matrixTempCorrection = json["matrixCorrection"].as<int>();
 			}
 			configFile.close();
@@ -920,9 +916,9 @@ void setup()
 			Serial.println("mounting not possible");
 		}
 	}
+	Serial.println("Matrix Type");
 
-
-	if(strcmp(MatrixType, "0") == 0)
+	if(!MatrixType2)
 	{
 		matrix = new FastLED_NeoMatrix(leds, 32, 8, NEO_MATRIX_TOP + NEO_MATRIX_LEFT + NEO_MATRIX_COLUMNS + NEO_MATRIX_ZIGZAG);
 	}
@@ -1033,12 +1029,18 @@ void setup()
 
 	wifiManager.setAPStaticIPConfig(IPAddress(172, 217, 28, 1), IPAddress(172, 217, 28, 1), IPAddress(255, 255, 255, 0));
 	WiFiManagerParameter custom_awtrix_server("server", "AWTRIX Server", awtrix_server, 16);
-	WiFiManagerParameter custom_matrix_type("type", "Matrix Type", MatrixType, 2);
+    WiFiManagerParameter p_MatrixType2("MatrixType2", "MatrixType 2", "T", 2, "type=\"checkbox\" ", WFM_LABEL_BEFORE);
+// Just a quick hint
+    WiFiManagerParameter p_hint("<small>Please configure your AWTRIX Server IP (without Port), and check MatrixType 2 if you cant read anything on the Matrix<br></small><br><br>");
+    WiFiManagerParameter p_lineBreak_notext("<p></p>");
+
 	wifiManager.setSaveConfigCallback(saveConfigCallback);
 	wifiManager.setAPCallback(configModeCallback);
+	wifiManager.addParameter(&p_hint);
 	wifiManager.addParameter(&custom_awtrix_server);
-	wifiManager.addParameter(&custom_matrix_type);
-
+	wifiManager.addParameter(&p_lineBreak_notext);
+    wifiManager.addParameter(&p_MatrixType2);
+	wifiManager.addParameter(&p_lineBreak_notext);
 	hardwareAnimatedSearch(0, 24, 0);
 
 	if (!wifiManager.autoConnect("AWTRIX Controller", "awtrixxx"))
@@ -1052,7 +1054,7 @@ void setup()
 
 	Serial.println("connected...yeey :)");
 	strcpy(awtrix_server, custom_awtrix_server.getValue());
-	strcpy(MatrixType, custom_matrix_type.getValue());
+  	MatrixType2 = (strncmp(p_MatrixType2.getValue(), "T", 1) == 0);
 
 	Serial.println(awtrix_server);
 
@@ -1096,7 +1098,7 @@ void setup()
 	{
 		if (!USBConnection)
 		{
-			Serial.println("saving config");
+		 Serial.println("saving config");
 		}
 		saveConfig();
 		ESP.reset();
