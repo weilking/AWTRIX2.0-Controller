@@ -439,7 +439,7 @@ void hardwareAnimatedSearch(int typ, int x, int y)
 			break;
 		}
 		matrix->show();
-		delay(500);
+		delay(100);
 	}
 }
 
@@ -835,6 +835,8 @@ void flashProgress(unsigned int progress, unsigned int total)
 	matrix->show();
 }
 
+
+
 void saveConfigCallback()
 {
 	if (!USBConnection)
@@ -869,6 +871,8 @@ void setup()
 		Serial.println("");
 		Serial.println(version);
 	}
+
+
 
 	if (SPIFFS.begin())
 	{
