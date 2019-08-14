@@ -690,12 +690,12 @@ void updateMatrix(byte payload[], int length)
 	case 14:
 	{
 
-		StaticJsonBuffer<50> jsonBuffer;
-		JsonObject &root = jsonBuffer.createObject();
-		root["type"] = "MatrixSaved";
-		String JS;
-		root.printTo(JS);
-		sendToServer(JS);
+		//StaticJsonBuffer<50> jsonBuffer;
+		//JsonObject &root = jsonBuffer.createObject();
+		//root["type"] = "MatrixSaved";
+		//String JS;
+		//root.printTo(JS);
+		//sendToServer(JS);
 
 
 		USBConnection = (int)payload[1];
@@ -862,7 +862,7 @@ void setup()
 {
 	delay(2000);
 	Serial.setRxBufferSize(1024);
-	Serial.begin(115200);
+	Serial.begin(230400);
 	if (!USBConnection)
 	{
 		Serial.println("");
