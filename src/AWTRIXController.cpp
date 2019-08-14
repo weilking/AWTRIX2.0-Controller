@@ -34,10 +34,10 @@ int audioState = false;	// 0 = false ; 1 = true
 int gestureState = false;  // 0 = false ; 1 = true
 int ldrState = 0;		   // 0 = None
 int USBConnection = false; // true = usb...
-char MatrixType[2]  = "1";
+char MatrixType[2]  = "0";
 int matrixTempCorrection = 0;
 
-String version = "0.13";
+String version = "0.15";
 char awtrix_server[16];
 
 IPAddress Server;
@@ -862,7 +862,7 @@ void setup()
 {
 	delay(2000);
 	Serial.setRxBufferSize(1024);
-	Serial.begin(230400);
+	Serial.begin(115200);
 	if (!USBConnection)
 	{
 		Serial.println("");
@@ -921,7 +921,8 @@ void setup()
 		}
 	}
 
-	if (MatrixType == "1")
+
+	if(strcmp(MatrixType, "0") == 0)
 	{
 		matrix = new FastLED_NeoMatrix(leds, 32, 8, NEO_MATRIX_TOP + NEO_MATRIX_LEFT + NEO_MATRIX_COLUMNS + NEO_MATRIX_ZIGZAG);
 	}
