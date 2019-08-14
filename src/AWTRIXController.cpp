@@ -1057,8 +1057,6 @@ void setup()
 	}
 
 	Serial.println("connected...yeey :)");
-	strcpy(awtrix_server, custom_awtrix_server.getValue());
-  	MatrixType2 = (strncmp(p_MatrixType2.getValue(), "T", 1) == 0);
 
 	Serial.println(awtrix_server);
 
@@ -1104,6 +1102,8 @@ void setup()
 		{
 		 Serial.println("saving config");
 		}
+		strcpy(awtrix_server, custom_awtrix_server.getValue());
+  		MatrixType2 = (strncmp(p_MatrixType2.getValue(), "T", 1) == 0);
 		saveConfig();
 		ESP.reset();
 	}
