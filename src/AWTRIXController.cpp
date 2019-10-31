@@ -18,12 +18,14 @@
 #include <Wire.h>
 #include <SparkFun_APDS9960.h>
 #include "SoftwareSerial.h"
-#include <DFPlayerMini_Fast.h>
+//#include <DFPlayerMini_Fast.h>
 #include <WiFiManager.h>
 #include <DoubleResetDetect.h>
 #include <Wire.h>
 #include <BME280_t.h>
 #include "Adafruit_HTU21DF.h"
+
+#include "DFRobotDFPlayerMini.h"
 
 // instantiate temp sensor
 BME280<> BMESensor;
@@ -33,11 +35,11 @@ int tempState = false;	 // 0 = None ; 1 = BME280 ; 2 = htu21d
 int audioState = false;	// 0 = false ; 1 = true
 int gestureState = false;  // 0 = false ; 1 = true
 int ldrState = 0;		   // 0 = None
-int USBConnection = false; // true = usb...
+bool USBConnection = false; // true = usb...
 bool MatrixType2  = false;
 int matrixTempCorrection = 0;
 
-String version = "0.13";
+String version = "0.17";
 char awtrix_server[16];
 
 IPAddress Server;
@@ -98,7 +100,9 @@ volatile bool isr_flag = 0;
 bool updating = false;
 
 // Audio
-DFPlayerMini_Fast myMP3;
+//DFPlayerMini_Fast myMP3;
+DFRobotDFPlayerMini myMP3;
+
 SoftwareSerial mySoftwareSerial(D7, D5); // RX, TX
 
 // Matrix Settings
@@ -622,9 +626,9 @@ void updateMatrix(byte payload[], int length)
 	case 10:
 	{
 		//Command 10: Play
-		myMP3.volume(payload[3]);
+		myMP3.volume(payload[2]);
 		delay(10);
-		myMP3.playFolder(payload[1], payload[2]);
+		myMP3.play(payload[1]);
 		break;
 	}
 	case 11:
@@ -685,23 +689,11 @@ void updateMatrix(byte payload[], int length)
 	}
 	case 14:
 	{
-
-		//StaticJsonBuffer<50> jsonBuffer;
-		//JsonObject &root = jsonBuffer.createObject();
-		//root["type"] = "MatrixSaved";
-		//String JS;
-		//root.printTo(JS);
-		//sendToServer(JS);
-
-
-		USBConnection = (int)payload[1];
-		tempState = (int)payload[2];
-		audioState = (int)payload[3];
-		gestureState = (int)payload[4];
-		ldrState = int(payload[5] << 8) + int(payload[6]);
-
-		matrixTempCorrection = (int)payload[7];
-
+		tempState = (int)payload[1];
+		audioState = (int)payload[2];
+		gestureState = (int)payload[3];
+		ldrState = int(payload[4] << 8) + int(payload[5]);
+		matrixTempCorrection = (int)payload[6];
 		matrix->clear();
 		matrix->setCursor(6, 6);
 		matrix->setTextColor(matrix->Color(0, 255, 50));
@@ -737,12 +729,9 @@ void reconnect()
 {
 	if (!USBConnection)
 	{
-		
-	
-
 		while (!client.connected())
 		{
-			Serial.println("reconnecting");
+			Serial.println("reconnecting to " + String(awtrix_server));
 			String clientId = "AWTRIXController-";
 			clientId += String(random(0xffff), HEX);
 			hardwareAnimatedSearch(1, 28, 0);
@@ -835,8 +824,6 @@ void flashProgress(unsigned int progress, unsigned int total)
 	matrix->show();
 }
 
-
-
 void saveConfigCallback()
 {
 	if (!USBConnection)
@@ -866,6 +853,8 @@ void setup()
 	delay(2000);
 	Serial.setRxBufferSize(1024);
 	Serial.begin(115200);
+	mySoftwareSerial.begin(9600);
+
 	if (!USBConnection)
 	{
 		Serial.println("");
@@ -902,7 +891,7 @@ void setup()
 					Serial.println("\nparsed json");
 				}
 				strcpy(awtrix_server, json["awtrix_server"]);
-				USBConnection = json["usbWifi"].as<int>();
+				USBConnection = json["usbWifi"].as<bool>();
 				audioState = json["audio"].as<int>();
 				gestureState = json["gesture"].as<int>();
 				ldrState = json["ldr"].as<int>();
@@ -930,6 +919,7 @@ void setup()
 	{
 		matrix = new FastLED_NeoMatrix(leds, 32, 8, NEO_MATRIX_TOP + NEO_MATRIX_LEFT + NEO_MATRIX_ROWS + NEO_MATRIX_ZIGZAG);
 	}
+
 	switch (matrixTempCorrection)
 	{
 	case 0:
@@ -1034,6 +1024,7 @@ void setup()
 	wifiManager.setAPStaticIPConfig(IPAddress(172, 217, 28, 1), IPAddress(172, 217, 28, 1), IPAddress(255, 255, 255, 0));
 	WiFiManagerParameter custom_awtrix_server("server", "AWTRIX Server", awtrix_server, 16);
     WiFiManagerParameter p_MatrixType2("MatrixType2", "MatrixType 2", "T", 2, "type=\"checkbox\" ", WFM_LABEL_BEFORE);
+	WiFiManagerParameter p_USBConnection("USBConnection", "Serial Connection", "T", 2, "type=\"checkbox\" ", WFM_LABEL_BEFORE);
 // Just a quick hint
     WiFiManagerParameter p_hint("<small>Please configure your AWTRIX Server IP (without Port), and check MatrixType 2 if you cant read anything on the Matrix<br></small><br><br>");
     WiFiManagerParameter p_lineBreak_notext("<p></p>");
@@ -1044,6 +1035,7 @@ void setup()
 	wifiManager.addParameter(&custom_awtrix_server);
 	wifiManager.addParameter(&p_lineBreak_notext);
     wifiManager.addParameter(&p_MatrixType2);
+	wifiManager.addParameter(&p_USBConnection);
 	wifiManager.addParameter(&p_lineBreak_notext);
 	hardwareAnimatedSearch(0, 24, 0);
 
@@ -1060,6 +1052,7 @@ void setup()
 
 	Serial.println(awtrix_server);
 
+	Serial.println("connected...yeey :)");
 	server.on("/", HTTP_GET, []() {
 		server.sendHeader("Connection", "close");
 		server.send(200, "text/html", serverIndex);
@@ -1104,63 +1097,45 @@ void setup()
 		}
 		strcpy(awtrix_server, custom_awtrix_server.getValue());
   		MatrixType2 = (strncmp(p_MatrixType2.getValue(), "T", 1) == 0);
+		USBConnection = (strncmp(p_USBConnection.getValue(), "T", 1) == 0);
 		saveConfig();
 		ESP.reset();
 	}
 
 	hardwareAnimatedCheck(0, 27, 2);
 
+	delay(1000);	//is needed for the dfplayer to startup
+
 	//Checking periphery
 	Wire.begin(I2C_SDA, I2C_SCL);
-	if (tempState == 1)
+	if (BMESensor.begin())
 	{
-		if (BMESensor.begin())
-		{
-			//temp OK
-			hardwareAnimatedCheck(2, 29, 2);
-		}
-		else
-		{
-			//temp NOK
-			hardwareAnimatedUncheck(2, 27, 1);
-		}
+		//temp OK
+		hardwareAnimatedCheck(2, 29, 2);
 	}
-	else if (tempState == 2)
+	if (htu.begin())
 	{
-		if (htu.begin())
-		{
-			hardwareAnimatedCheck(2, 29, 2);
-		}
-		else
-		{
-			hardwareAnimatedUncheck(2, 27, 1);
-		}
+		hardwareAnimatedCheck(2, 29, 2);
 	}
 
-	if (audioState)
-	{
-		mySoftwareSerial.begin(9600);
-		myMP3.begin(mySoftwareSerial);
-		hardwareAnimatedCheck(3, 29, 2);
-	}
-	if (gestureState)
-	{
+	
+ 	if (myMP3.begin(mySoftwareSerial)) {  //Use softwareSerial to communicate with mp3.
+    	hardwareAnimatedCheck(3, 29, 2);
+  	}
+
+	attachInterrupt(APDS9960_INT, interruptRoutine, FALLING);
+	apds.enableGestureSensor(true);
+	if (apds.init ()){
+		hardwareAnimatedCheck(4, 29, 2);
 		pinMode(APDS9960_INT, INPUT);
-		attachInterrupt(APDS9960_INT, interruptRoutine, FALLING);
-		if(apds.init()){
-			hardwareAnimatedCheck(4, 29, 2);
-		}
-		else
-		{
-			hardwareAnimatedUncheck(4, 27, 1);
-		}	
-		apds.enableGestureSensor(true);
+		
 	}
-	if (ldrState)
-	{
-		photocell.setPhotocellPositionOnGround(false);
+
+	photocell.setPhotocellPositionOnGround(false);
+	if(photocell.getCurrentLux()>1){
 		hardwareAnimatedCheck(5, 29, 2);
 	}
+
 
 	ArduinoOTA.onStart([&]() {
 		updating = true;
@@ -1185,6 +1160,15 @@ void setup()
 
 	getLength = true;
 	prefix = -5;
+	
+	 for(int x=32; x>=-90; x--) {
+        matrix->clear();
+        matrix->setCursor(x, 6);
+        matrix->print("Server-IP: " + String(awtrix_server));
+		matrix->setTextColor(matrix->Color(0, 255, 50));
+	    matrix->show();
+        delay(65);
+    }
 
 	if (!USBConnection)
 	{
