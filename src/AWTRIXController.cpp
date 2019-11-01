@@ -63,8 +63,9 @@ int myTime2; //need for loop
 int myTime3; //need for loop3
 int myCounter;
 int myCounter2;
-boolean getLength = true;
-int prefix = -5;
+//boolean getLength = true;
+//int prefix = -5;
+
 boolean awtrixFound = false;
 int myPointer[14];
 uint32_t messageLength = 0;
@@ -1009,13 +1010,17 @@ void setup()
 		{
 			delay(1000);
 			SPIFFS.remove("/awtrix.json");
-			Serial.println("/awtrix.json removed");
+			if(!USBConnection){
+				Serial.println("/awtrix.json removed");
+			}
 			SPIFFS.end();
 			delay(1000);
 		}
 		else
 		{
-			Serial.println("Could not begin SPIFFS");
+			if(!USBConnection){
+				Serial.println("Could not begin SPIFFS");
+			}
 		}
 		wifiManager.resetSettings();
 		ESP.reset();
@@ -1041,18 +1046,22 @@ void setup()
 
 	if (!wifiManager.autoConnect("AWTRIX Controller", "awtrixxx"))
 	{
-		Serial.println("failed to connect and hit timeout");
+		if(!USBConnection){
+			Serial.println("failed to connect and hit timeout");
+		}
 		delay(3000);
 		//reset and try again, or maybe put it to deep sleep
 		ESP.reset();
 		delay(5000);
 	}
+	if(!USBConnection){
+		Serial.println("connected...yeey :)");
 
-	Serial.println("connected...yeey :)");
+		Serial.println(awtrix_server);
 
-	Serial.println(awtrix_server);
+		Serial.println("connected...yeey :)");	
+	}
 
-	Serial.println("connected...yeey :)");
 	server.on("/", HTTP_GET, []() {
 		server.sendHeader("Connection", "close");
 		server.send(200, "text/html", serverIndex);
@@ -1065,7 +1074,9 @@ void setup()
 	  
       if (upload.status == UPLOAD_FILE_START) {
         Serial.setDebugOutput(true);
-        Serial.printf("Update: %s\n", upload.filename.c_str());
+		if(!USBConnection){
+			Serial.printf("Update: %s\n", upload.filename.c_str());	
+		}
         uint32_t maxSketchSpace = (ESP.getFreeSketchSpace() - 0x1000) & 0xFFFFF000;
         if (!Update.begin(maxSketchSpace)) { //start with max available size
           Update.printError(Serial);
@@ -1079,7 +1090,10 @@ void setup()
       } else if (upload.status == UPLOAD_FILE_END) {
         if (Update.end(true)) { //true to set the size to the current progress
 		  server.send(200, "text/plain", (Update.hasError()) ? "FAIL" : "OK");
-          Serial.printf("Update Success: %u\nRebooting...\n", upload.totalSize);
+		  if(!USBConnection){
+			Serial.printf("Update Success: %u\nRebooting...\n", upload.totalSize);
+			}
+          
         } else {
           Update.printError(Serial);
         }
@@ -1093,7 +1107,7 @@ void setup()
 	{
 		if (!USBConnection)
 		{
-		 Serial.println("saving config");
+			Serial.println("saving config");
 		}
 		strcpy(awtrix_server, custom_awtrix_server.getValue());
   		MatrixType2 = (strncmp(p_MatrixType2.getValue(), "T", 1) == 0);
@@ -1118,7 +1132,6 @@ void setup()
 		hardwareAnimatedCheck(2, 29, 2);
 	}
 
-	
  	if (myMP3.begin(mySoftwareSerial)) {  //Use softwareSerial to communicate with mp3.
     	hardwareAnimatedCheck(3, 29, 2);
   	}
@@ -1158,8 +1171,8 @@ void setup()
 	myCounter = 0;
 	myCounter2 = 0;
 
-	getLength = true;
-	prefix = -5;
+	//getLength = true;
+	//prefix = -5;
 	
 	 for(int x=32; x>=-90; x--) {
         matrix->clear();
@@ -1182,6 +1195,7 @@ void loop()
 	server.handleClient();
 	ArduinoOTA.handle();
 
+	//is needed for the server search animation
 	if (firstStart)
 	{
 		if (!USBConnection)
@@ -1212,11 +1226,12 @@ void loop()
 		}
 	}
 
+	//not during the falsh process
 	if (!updating)
 	{
 		if (USBConnection)
 		{
-			//third try
+			//USB
 			if (Serial.available() > 0)
 			{
 				//read and fill in ringbuffer
@@ -1271,7 +1286,7 @@ void loop()
 				}
 			}
 		}
-
+		//Wifi
 		else
 		{
 			if (!client.connected())
@@ -1283,6 +1298,7 @@ void loop()
 				client.loop();
 			}
 		}
+		//check gesture sensor
 		if (isr_flag == 1)
 		{
 			detachInterrupt(APDS9960_INT);
