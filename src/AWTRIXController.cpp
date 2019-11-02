@@ -34,7 +34,7 @@ Adafruit_HTU21DF htu = Adafruit_HTU21DF();
 int tempState = false;	 // 0 = None ; 1 = BME280 ; 2 = htu21d
 int audioState = false;	// 0 = false ; 1 = true
 int gestureState = false;  // 0 = false ; 1 = true
-int ldrState = 0;		   // 0 = None
+int ldrState = 1000;		   // 0 = None
 bool USBConnection = false; // true = usb...
 bool MatrixType2  = false;
 int matrixTempCorrection = 0;
@@ -80,6 +80,10 @@ int cfgStart = 0;
 
 //flag for saving data
 bool shouldSaveConfig = false;
+
+//Brigthness Controll in Controller
+#define MIN_BRIGHTNESS 10
+#define MAX_BRIGHTNESS 255
 
 /// LDR Config
 #define LDR_RESISTOR 1000 //ohms
@@ -505,7 +509,45 @@ void updateMatrix(byte payload[], int length)
 		uint16_t y_coordinate = int(payload[3] << 8) + int(payload[4]);
 
 		matrix->setCursor(x_coordinate + 1, y_coordinate + y_offset);
-		matrix->setTextColor(matrix->Color(payload[5], payload[6], payload[7]));
+
+		//erster Versuch der Helligkeitsregelung... 
+		//ist aber noch nicht sehr gut :-D
+		int lux = photocell.getCurrentLux();
+
+		if(lux>800){
+			lux = 800;
+		}
+		float a = 1.0*lux/800;
+		
+		int red = 0;
+		int green = 0;
+		int blue = 0;
+
+		red = payload[5]*a;
+		if(red>MAX_BRIGHTNESS){
+			red = MAX_BRIGHTNESS;
+		} 
+		if (red<MIN_BRIGHTNESS){
+			red = MIN_BRIGHTNESS;
+		}
+		
+		green = payload[6]*a;
+		if(green>MAX_BRIGHTNESS){
+			green = MAX_BRIGHTNESS;
+		} 
+		if (green<MIN_BRIGHTNESS){
+			green = MIN_BRIGHTNESS;
+		}
+
+		blue = payload[7]*a;
+		if(blue>MAX_BRIGHTNESS){
+			blue = MAX_BRIGHTNESS;
+		} 
+		if (blue<MIN_BRIGHTNESS){
+			blue = MIN_BRIGHTNESS;
+		}
+
+		matrix->setTextColor(matrix->Color(red, green, blue));
 
 		String myText = "";
 		for (int i = 8; i < length; i++)
@@ -818,9 +860,9 @@ void flashProgress(unsigned int progress, unsigned int total)
 			if (num-- > 0)
 				matrix->drawPixel(x, 8 - y - 1, Wheel((num * 16) & 255, 0));
 		}
-	}
-	matrix->setCursor(0, 6);
-	matrix->setTextColor(matrix->Color(255, 255, 255));
+	} 
+	matrix->setCursor(1, 6);
+	matrix->setTextColor(matrix->Color(200, 200, 200));
 	matrix->print("FLASHING");
 	matrix->show();
 }
@@ -990,8 +1032,7 @@ void setup()
 		FastLED.addLeds<NEOPIXEL, D2>(leds, 256).setCorrection(TypicalLEDStrip);
 		break;
 	}
-	photocell.updateResistor(ldrState);
-
+	
 	matrix->begin();
 	matrix->setTextWrap(false);
 	matrix->setBrightness(80);
