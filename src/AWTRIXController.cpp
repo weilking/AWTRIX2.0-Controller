@@ -27,6 +27,7 @@
 
 #include "DFRobotDFPlayerMini.h"
 
+
 // instantiate temp sensor
 BME280<> BMESensor;
 Adafruit_HTU21DF htu = Adafruit_HTU21DF();
@@ -66,6 +67,12 @@ int myCounter2;
 //boolean getLength = true;
 //int prefix = -5;
 
+
+int timeoutTaster = 0;
+bool ignoreServer = false;
+int menuePointer;
+
+
 boolean awtrixFound = false;
 int myPointer[14];
 uint32_t messageLength = 0;
@@ -82,8 +89,11 @@ int cfgStart = 0;
 bool shouldSaveConfig = false;
 
 //Brigthness Controll in Controller
-#define MIN_BRIGHTNESS 10
-#define MAX_BRIGHTNESS 255
+int minBrightness = 10;
+int maxBrightness = 255;
+int currentBrightness = 100;
+int targetBrightness;
+int brightnessTime;
 
 /// LDR Config
 #define LDR_RESISTOR 1000 //ohms
@@ -138,6 +148,39 @@ byte utf8ascii(byte ascii)
 			return (0xEA);
 	}
 	return (0);
+}
+
+void getBrightness(){
+	int lux = photocell.getCurrentLux();
+	float a = 1.0 * lux /800;
+	targetBrightness = a*255;
+}
+
+void calcBrightness(int brightness){
+	if(brightness==-1){
+		if((targetBrightness-currentBrightness)>5||(targetBrightness-currentBrightness)<-5){
+			if(targetBrightness>currentBrightness){
+				currentBrightness = currentBrightness + 2;
+				if(currentBrightness>maxBrightness){
+					currentBrightness = maxBrightness;
+				}
+			}
+			else {
+				currentBrightness = currentBrightness - 2;
+				if(currentBrightness<minBrightness){
+					currentBrightness = minBrightness;
+				}	
+			}
+			matrix->setBrightness(currentBrightness);
+			matrix->show();
+		} 
+	} else{
+		if(brightness>currentBrightness){
+			brightness = currentBrightness;
+		}
+		matrix->setBrightness(brightness);
+	}
+	
 }
 
 bool saveConfig()
@@ -491,7 +534,8 @@ int GetRSSIasQuality(int rssi)
 
 void updateMatrix(byte payload[], int length)
 {
-	int y_offset = 5;
+	if(!ignoreServer){
+		int y_offset = 5;
 	if (firstStart)
 	{
 		//hardwareAnimatedCheck(1, 30, 2);
@@ -509,46 +553,7 @@ void updateMatrix(byte payload[], int length)
 		uint16_t y_coordinate = int(payload[3] << 8) + int(payload[4]);
 
 		matrix->setCursor(x_coordinate + 1, y_coordinate + y_offset);
-
-		//erster Versuch der Helligkeitsregelung... 
-		//ist aber noch nicht sehr gut :-D
-		int lux = photocell.getCurrentLux();
-
-		if(lux>800){
-			lux = 800;
-		}
-		float a = 1.0*lux/800;
-		
-		int red = 0;
-		int green = 0;
-		int blue = 0;
-
-		red = payload[5]*a;
-		if(red>MAX_BRIGHTNESS){
-			red = MAX_BRIGHTNESS;
-		} 
-		if (red<MIN_BRIGHTNESS){
-			red = MIN_BRIGHTNESS;
-		}
-		
-		green = payload[6]*a;
-		if(green>MAX_BRIGHTNESS){
-			green = MAX_BRIGHTNESS;
-		} 
-		if (green<MIN_BRIGHTNESS){
-			green = MIN_BRIGHTNESS;
-		}
-
-		blue = payload[7]*a;
-		if(blue>MAX_BRIGHTNESS){
-			blue = MAX_BRIGHTNESS;
-		} 
-		if (blue<MIN_BRIGHTNESS){
-			blue = MIN_BRIGHTNESS;
-		}
-
-		matrix->setTextColor(matrix->Color(red, green, blue));
-
+		matrix->setTextColor(matrix->Color(payload[5], payload[6], payload[7]));
 		String myText = "";
 		for (int i = 8; i < length; i++)
 		{
@@ -727,7 +732,7 @@ void updateMatrix(byte payload[], int length)
 	}
 	case 13:
 	{
-		matrix->setBrightness(payload[1]);
+		calcBrightness(payload[1]);
 		break;
 	}
 	case 14:
@@ -761,6 +766,8 @@ void updateMatrix(byte payload[], int length)
 		break;
 	}
 	}
+	}
+	
 }
 
 void callback(char *topic, byte *payload, unsigned int length)
@@ -1159,6 +1166,7 @@ void setup()
 
 	hardwareAnimatedCheck(0, 27, 2);
 
+	
 	delay(1000);	//is needed for the dfplayer to startup
 
 	//Checking periphery
@@ -1189,7 +1197,7 @@ void setup()
 	if(photocell.getCurrentLux()>1){
 		hardwareAnimatedCheck(5, 29, 2);
 	}
-
+	
 
 	ArduinoOTA.onStart([&]() {
 		updating = true;
@@ -1215,6 +1223,8 @@ void setup()
 	//getLength = true;
 	//prefix = -5;
 	
+
+	/*
 	 for(int x=32; x>=-90; x--) {
         matrix->clear();
         matrix->setCursor(x, 6);
@@ -1223,12 +1233,22 @@ void setup()
 	    matrix->show();
         delay(65);
     }
+	*/
 
 	if (!USBConnection)
 	{
 		client.setServer(awtrix_server, 7001);
 		client.setCallback(callback);
 	}
+
+	pinMode(D0, INPUT);
+  	pinMode(D0, INPUT_PULLUP);
+
+	pinMode(D4, INPUT);
+  	pinMode(D4, INPUT_PULLUP);
+
+	pinMode(D8, INPUT);
+	//pinMode(D8, INPUT_PULLDOWN_16);
 }
 
 void loop()
@@ -1348,4 +1368,102 @@ void loop()
 			attachInterrupt(APDS9960_INT, interruptRoutine, FALLING);
 		}
 	}
+
+	if ((digitalRead(D0)) == LOW && (digitalRead(D8) == HIGH)) {
+		timeoutTaster = millis();
+		while((digitalRead(D0)) == LOW || (digitalRead(D8) == HIGH)){
+			if(millis()-timeoutTaster>1000){
+				break;
+			}
+		}
+		delay(20);
+		if(ignoreServer){
+			ignoreServer = false;
+		}
+		else {
+			ignoreServer = true;
+			menuePointer = 0;	
+		}
+	}
+	
+	if (digitalRead(D4) == LOW) {
+		timeoutTaster = millis();
+		while(digitalRead(D4) == LOW){
+			if(millis()-timeoutTaster>1000){
+				break;
+			}
+		}
+		delay(20);
+		menuePointer++;
+	}
+
+	/*
+	if (digitalRead(D8) == HIGH) {
+		timeoutTaster = millis();
+		while(digitalRead(D8) == HIGH){
+			if(millis()-timeoutTaster>1000){
+				break;
+			}
+		}
+		delay(20);
+		Serial.println("Button D8");
+	}
+	*/
+	if(ignoreServer){
+		switch(menuePointer){
+			case 0:
+				matrix->clear();
+				matrix->setCursor(3, 6);
+				matrix->setTextColor(matrix->Color(0, 255, 50));
+				matrix->print("Menue");
+				matrix->show();
+				break;
+			case 1:
+				matrix->clear();
+				matrix->setCursor(1, 6);
+				matrix->setTextColor(matrix->Color(0, 255, 50));
+				matrix->print("Hier");
+				matrix->show();
+				break;
+			case 2:
+				matrix->clear();
+				matrix->setCursor(1, 6);
+				matrix->setTextColor(matrix->Color(0, 255, 50));
+				matrix->print("koennte");
+				matrix->show();
+				break;
+			case 3:
+				matrix->clear();
+				matrix->setCursor(1, 6);
+				matrix->setTextColor(matrix->Color(0, 255, 50));
+				matrix->print("ihre");
+				matrix->show();
+				break;
+			case 4:
+				matrix->clear();
+				matrix->setCursor(1, 6);
+				matrix->setTextColor(matrix->Color(0, 255, 50));
+				matrix->print("Werbung");
+				matrix->show();
+				break;
+			case 5:
+				matrix->clear();
+				matrix->setCursor(1, 6);
+				matrix->setTextColor(matrix->Color(0, 255, 50));
+				matrix->print("stehen!");
+				matrix->show();
+			break;
+			case 6:
+				menuePointer = 0;
+			break;
+		}
+		
+	}
+
+	if(millis()-brightnessTime>100){
+		brightnessTime = millis();
+		getBrightness();
+		calcBrightness(-1);
+	}
 }
+
