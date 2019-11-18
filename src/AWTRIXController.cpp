@@ -172,7 +172,7 @@ void calcBrightness(int brightness){
 				}	
 			}
 			matrix->setBrightness(currentBrightness);
-			matrix->show();
+			//matrix->show();
 		} 
 	} else{
 		if(brightness>currentBrightness){
