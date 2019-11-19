@@ -74,12 +74,13 @@ int menuePointer;
 
 //Taster_mid
 int tasterPin[] = {D0,D4,D8};
-int timeoutTaster[] = {0,0,0};
-bool pushed[] = {false,false,false};
-int blockTimeTaster[] = {0,0,0};
-bool blockTaster[] = {false,false,false};
-bool blockTaster2[] = {false,false,false};
+int timeoutTaster[] = {0,0,0,0};
+bool pushed[] = {false,false,false,false};
+int blockTimeTaster[] = {0,0,0,0};
+bool blockTaster[] = {false,false,false,false};
+bool blockTaster2[] = {false,false,false,false};
 bool tasterState[3];
+bool allowTasterSendToServer = true;
 
 
 boolean awtrixFound = false;
@@ -278,6 +279,12 @@ int checkTaster(int nr){
 				timeoutTaster[nr] = millis();
 			}
 			break;
+		case 3:
+			if (tasterState[0] == LOW && tasterState[2] == LOW && !pushed[nr] && !blockTaster2[nr]  && tasterState[1]) {
+				pushed[nr] = true;
+				timeoutTaster[nr] = millis();
+			}
+			break;
 	}
 	
 
@@ -290,6 +297,7 @@ int checkTaster(int nr){
 			switch(nr){
 				case 0: 
 					root["left"] = "short";
+					menuePointer--;
 					//Serial.println("LEFT: normaler Tastendruck");
 					break;
 				case 1: 
@@ -298,6 +306,7 @@ int checkTaster(int nr){
 					break;
 				case 2: 
 					root["right"] = "short";
+					menuePointer++;
 					//Serial.println("RIGHT: normaler Tastendruck");
 					break;
 
@@ -305,10 +314,10 @@ int checkTaster(int nr){
 			
 			String JS;
 			root.printTo(JS);
-			sendToServer(JS);
-			
+			if(allowTasterSendToServer){
+				sendToServer(JS);
+			}			
 			pushed[nr] = false;
-			menuePointer++;
 			return 1;
 		}		
 	}
@@ -331,31 +340,43 @@ int checkTaster(int nr){
 					root["right"] = "long";
 					//Serial.println("RIGHT: langer Tastendruck");
 					break;
+				case 3:
+					if(allowTasterSendToServer){
+						allowTasterSendToServer = false;
+						//ignoreServer = true;
+						menuePointer = 0;
+					}
+					else {
+						allowTasterSendToServer = true;
+						ignoreServer = false;
+						menuePointer = -1;
+					}
+					break;
 			}
 			String JS;
 			root.printTo(JS);
-			sendToServer(JS);
+			if(allowTasterSendToServer){
+				sendToServer(JS);
+			}
 
 			blockTaster[nr] = true;
 			blockTaster2[nr] = true;
 			pushed[nr] = false;
-
-			if(ignoreServer){
-				ignoreServer = false;
-				menuePointer = -1;
-			}
-			else {
-				ignoreServer = true;
-				menuePointer = 0;	
-			}
 			return 2;
 		}
 	}
-
-	if(blockTaster[nr] && tasterState[nr] == HIGH){
-		blockTaster[nr] = false;
-		blockTimeTaster[nr] = millis();	
+	if(nr==3){
+		if(blockTaster[nr] && tasterState[0] == HIGH && tasterState[2] == HIGH){
+			blockTaster[nr] = false;
+			blockTimeTaster[nr] = millis();	
+		}
+	} else {
+		if(blockTaster[nr] && tasterState[nr] == HIGH){
+			blockTaster[nr] = false;
+			blockTimeTaster[nr] = millis();	
+		}
 	}
+	
         
 	if(!blockTaster[nr] && (millis()-blockTimeTaster[nr]>500)){
 		blockTaster2[nr] = false;
@@ -1491,38 +1512,21 @@ void loop()
 		}
 	}
 
-	if ((digitalRead(D0)) == HIGH && (digitalRead(D8) == HIGH)) {
-		/*
-		timeoutTaster = millis();
-		while((digitalRead(D0)) == LOW || (digitalRead(D8) == HIGH)){
-			if(millis()-timeoutTaster>1000){
-				break;
-			}
-		}
-		delay(20);
-		if(ignoreServer){
-			ignoreServer = false;
-		}
-		else {
-			ignoreServer = true;
-			menuePointer = 0;	
-		}
-		*/
-	}
-
 	checkTaster(0);
 	checkTaster(1);
 	checkTaster(2);
-	ignoreServer = false;
+	//checkTaster(3);
 
 	if(ignoreServer){
 		switch(menuePointer){
+			case -1:
 			case 0:
 				matrix->clear();
 				matrix->setCursor(3, 6);
 				matrix->setTextColor(matrix->Color(0, 255, 50));
 				matrix->print("Menue");
 				matrix->show();
+				menuePointer = 0;
 				break;
 			case 1:
 				matrix->clear();
