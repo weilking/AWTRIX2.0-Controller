@@ -1292,10 +1292,12 @@ void setup()
 	if (BMESensor.begin())
 	{
 		//temp OK
+		tempState = 1;
 		hardwareAnimatedCheck(2, 29, 2);
 	}
 	if (htu.begin())
 	{
+		tempState = 2;
 		hardwareAnimatedCheck(2, 29, 2);
 	}
 
@@ -1342,7 +1344,7 @@ void setup()
 	//prefix = -5;
 	
 
-	/*
+	
 	 for(int x=32; x>=-90; x--) {
         matrix->clear();
         matrix->setCursor(x, 6);
@@ -1351,7 +1353,7 @@ void setup()
 	    matrix->show();
         delay(65);
     }
-	*/
+	
 
 	if (!USBConnection)
 	{
