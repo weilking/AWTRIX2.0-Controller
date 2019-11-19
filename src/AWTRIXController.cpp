@@ -27,7 +27,6 @@
 
 #include "DFRobotDFPlayerMini.h"
 
-
 // instantiate temp sensor
 BME280<> BMESensor;
 Adafruit_HTU21DF htu = Adafruit_HTU21DF();
@@ -68,9 +67,19 @@ int myCounter2;
 //int prefix = -5;
 
 
-int timeoutTaster = 0;
+
 bool ignoreServer = false;
 int menuePointer;
+
+
+//Taster_mid
+int tasterPin[] = {D0,D4,D8};
+int timeoutTaster[] = {0,0,0};
+bool pushed[] = {false,false,false};
+int blockTimeTaster[] = {0,0,0};
+bool blockTaster[] = {false,false,false};
+bool blockTaster2[] = {false,false,false};
+bool tasterState[3];
 
 
 boolean awtrixFound = false;
@@ -243,6 +252,115 @@ void logToServer(String s)
 	String JS;
 	root.printTo(JS);
 	sendToServer(JS);
+}
+
+int checkTaster(int nr){
+	tasterState[0] = !digitalRead(tasterPin[0]);
+	tasterState[1] = digitalRead(tasterPin[1]);
+	tasterState[2] = !digitalRead(tasterPin[2]);
+
+	switch(nr){
+		case 0:
+			if (tasterState[0] == LOW && !pushed[nr] && !blockTaster2[nr] && tasterState[1] && tasterState[2]) {
+				pushed[nr] = true;
+				timeoutTaster[nr] = millis();
+			}
+			break;
+		case 1:
+			if (tasterState[1] == LOW && !pushed[nr] && !blockTaster2[nr] && tasterState[0] && tasterState[2]) {
+				pushed[nr] = true;
+				timeoutTaster[nr] = millis();
+			}
+			break;
+		case 2:
+			if (tasterState[2] == LOW && !pushed[nr] && !blockTaster2[nr] && tasterState[0] && tasterState[1]) {
+				pushed[nr] = true;
+				timeoutTaster[nr] = millis();
+			}
+			break;
+	}
+	
+
+	if(pushed[nr] && (millis()-timeoutTaster[nr]<2000) && tasterState[nr] == HIGH){
+		if(!blockTaster2[nr]){
+			StaticJsonBuffer<400> jsonBuffer;
+			JsonObject &root = jsonBuffer.createObject();
+			root["type"] = "button";
+			
+			switch(nr){
+				case 0: 
+					root["left"] = "short";
+					//Serial.println("LEFT: normaler Tastendruck");
+					break;
+				case 1: 
+					root["middle"] = "short";
+					//Serial.println("MID: normaler Tastendruck");
+					break;
+				case 2: 
+					root["right"] = "short";
+					//Serial.println("RIGHT: normaler Tastendruck");
+					break;
+
+			}
+			
+			String JS;
+			root.printTo(JS);
+			sendToServer(JS);
+			
+			pushed[nr] = false;
+			menuePointer++;
+			return 1;
+		}		
+	}
+
+	if(pushed[nr] && (millis()-timeoutTaster[nr]>2000)){
+		if(!blockTaster2[nr]){
+			StaticJsonBuffer<400> jsonBuffer;
+			JsonObject &root = jsonBuffer.createObject();
+			root["type"] = "button";
+			switch(nr){
+				case 0: 
+					root["left"] = "long";
+					//Serial.println("LEFT: langer Tastendruck");
+					break;
+				case 1: 
+					root["middle"] = "long";
+					//Serial.println("MID: langer Tastendruck");
+					break;
+				case 2: 
+					root["right"] = "long";
+					//Serial.println("RIGHT: langer Tastendruck");
+					break;
+			}
+			String JS;
+			root.printTo(JS);
+			sendToServer(JS);
+
+			blockTaster[nr] = true;
+			blockTaster2[nr] = true;
+			pushed[nr] = false;
+
+			if(ignoreServer){
+				ignoreServer = false;
+				menuePointer = -1;
+			}
+			else {
+				ignoreServer = true;
+				menuePointer = 0;	
+			}
+			return 2;
+		}
+	}
+
+	if(blockTaster[nr] && tasterState[nr] == HIGH){
+		blockTaster[nr] = false;
+		blockTimeTaster[nr] = millis();	
+	}
+        
+	if(!blockTaster[nr] && (millis()-blockTimeTaster[nr]>500)){
+		blockTaster2[nr] = false;
+	}
+	return 0;
 }
 
 String utf8ascii(String s)
@@ -1249,6 +1367,8 @@ void setup()
 
 	pinMode(D8, INPUT);
 	//pinMode(D8, INPUT_PULLDOWN_16);
+
+	ignoreServer = false;
 }
 
 void loop()
@@ -1257,7 +1377,7 @@ void loop()
 	ArduinoOTA.handle();
 
 	//is needed for the server search animation
-	if (firstStart)
+	if (firstStart && !ignoreServer)
 	{
 		if (!USBConnection)
 		{
@@ -1369,7 +1489,8 @@ void loop()
 		}
 	}
 
-	if ((digitalRead(D0)) == LOW && (digitalRead(D8) == HIGH)) {
+	if ((digitalRead(D0)) == HIGH && (digitalRead(D8) == HIGH)) {
+		/*
 		timeoutTaster = millis();
 		while((digitalRead(D0)) == LOW || (digitalRead(D8) == HIGH)){
 			if(millis()-timeoutTaster>1000){
@@ -1384,31 +1505,14 @@ void loop()
 			ignoreServer = true;
 			menuePointer = 0;	
 		}
-	}
-	
-	if (digitalRead(D4) == LOW) {
-		timeoutTaster = millis();
-		while(digitalRead(D4) == LOW){
-			if(millis()-timeoutTaster>1000){
-				break;
-			}
-		}
-		delay(20);
-		menuePointer++;
+		*/
 	}
 
-	/*
-	if (digitalRead(D8) == HIGH) {
-		timeoutTaster = millis();
-		while(digitalRead(D8) == HIGH){
-			if(millis()-timeoutTaster>1000){
-				break;
-			}
-		}
-		delay(20);
-		Serial.println("Button D8");
-	}
-	*/
+	checkTaster(0);
+	checkTaster(1);
+	checkTaster(2);
+	ignoreServer = false;
+
 	if(ignoreServer){
 		switch(menuePointer){
 			case 0:
