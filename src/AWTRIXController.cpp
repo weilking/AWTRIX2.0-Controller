@@ -27,6 +27,8 @@
 
 #include "DFRobotDFPlayerMini.h"
 
+#include "MenueControl\MenueControl.h"
+
 // instantiate temp sensor
 BME280<> BMESensor;
 Adafruit_HTU21DF htu = Adafruit_HTU21DF();
@@ -47,6 +49,8 @@ WiFiClient espClient;
 PubSubClient client(espClient);
 
 WiFiManager wifiManager;
+
+MenueControl myMenue;
 
 //update
 ESP8266WebServer server(80);
@@ -81,6 +85,7 @@ bool blockTaster[] = {false,false,false,false};
 bool blockTaster2[] = {false,false,false,false};
 bool tasterState[3];
 bool allowTasterSendToServer = true;
+int pressedTaster = 0;
 
 
 boolean awtrixFound = false;
@@ -297,16 +302,17 @@ int checkTaster(int nr){
 			switch(nr){
 				case 0: 
 					root["left"] = "short";
-					menuePointer--;
+					pressedTaster = 1;
 					//Serial.println("LEFT: normaler Tastendruck");
 					break;
 				case 1: 
 					root["middle"] = "short";
+					pressedTaster = 2;
 					//Serial.println("MID: normaler Tastendruck");
 					break;
 				case 2: 
 					root["right"] = "short";
-					menuePointer++;
+					pressedTaster = 3;
 					//Serial.println("RIGHT: normaler Tastendruck");
 					break;
 
@@ -343,13 +349,12 @@ int checkTaster(int nr){
 				case 3:
 					if(allowTasterSendToServer){
 						allowTasterSendToServer = false;
-						//ignoreServer = true;
-						menuePointer = 0;
+						ignoreServer = true;
 					}
 					else {
 						allowTasterSendToServer = true;
 						ignoreServer = false;
-						menuePointer = -1;
+						menuePointer = 0;
 					}
 					break;
 			}
@@ -1515,59 +1520,29 @@ void loop()
 	checkTaster(0);
 	checkTaster(1);
 	checkTaster(2);
-	//checkTaster(3);
+	checkTaster(3);
 
+
+	//is needed for the menue...
 	if(ignoreServer){
-		switch(menuePointer){
-			case -1:
-			case 0:
-				matrix->clear();
-				matrix->setCursor(3, 6);
-				matrix->setTextColor(matrix->Color(0, 255, 50));
-				matrix->print("Menue");
-				matrix->show();
-				menuePointer = 0;
-				break;
-			case 1:
-				matrix->clear();
-				matrix->setCursor(1, 6);
-				matrix->setTextColor(matrix->Color(0, 255, 50));
-				matrix->print("Hier");
-				matrix->show();
-				break;
-			case 2:
-				matrix->clear();
-				matrix->setCursor(1, 6);
-				matrix->setTextColor(matrix->Color(0, 255, 50));
-				matrix->print("koennte");
-				matrix->show();
-				break;
-			case 3:
-				matrix->clear();
-				matrix->setCursor(1, 6);
-				matrix->setTextColor(matrix->Color(0, 255, 50));
-				matrix->print("ihre");
-				matrix->show();
-				break;
-			case 4:
-				matrix->clear();
-				matrix->setCursor(1, 6);
-				matrix->setTextColor(matrix->Color(0, 255, 50));
-				matrix->print("Werbung");
-				matrix->show();
-				break;
-			case 5:
-				matrix->clear();
-				matrix->setCursor(1, 6);
-				matrix->setTextColor(matrix->Color(0, 255, 50));
-				matrix->print("stehen!");
-				matrix->show();
-			break;
-			case 6:
-				menuePointer = 0;
-			break;
+		if(pressedTaster>0){
+			Serial.print("Taster gedrückt...(");
+			Serial.print(pressedTaster);
+			Serial.println(")");
+			Serial.print("Menue: ");
+			Serial.println(menuePointer);
+			matrix->clear();
+			matrix->setCursor(0, 6);
+			matrix->setTextColor(matrix->Color(0, 255, 50));
+			matrix->print(myMenue.getMenueString(&menuePointer,&pressedTaster,&minBrightness,&maxBrightness));
+			matrix->show();	
 		}
-		
+
+		//get data and ignore
+		if (Serial.available() > 0)
+		{
+			Serial.read();
+		}
 	}
 
 	if(millis()-brightnessTime>100){
