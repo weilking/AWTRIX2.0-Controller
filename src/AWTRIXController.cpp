@@ -39,6 +39,7 @@ int gestureState = false;   // 0 = false ; 1 = true
 int ldrState = 1000;		// 0 = None
 bool USBConnection = false; // true = usb...
 bool WIFIConnection = false;
+int connectionTimout;
 
 bool MatrixType2 = false;
 int matrixTempCorrection = 0;
@@ -717,6 +718,8 @@ void updateMatrix(byte payload[], int length)
 			firstStart = false;
 		}
 
+		connectionTimout = millis();
+		
 		switch (payload[0])
 		{
 		case 0:
@@ -963,11 +966,9 @@ void updateMatrix(byte payload[], int length)
 		case 20:
 		{
 			//change the connection...
-			if(!WIFIConnection){
-				USBConnection = false;
-				WIFIConnection = false;
-				firstStart = true;
-			}
+			USBConnection = false;
+			WIFIConnection = false;
+			firstStart = true;
 			break;
 		}
 		}
@@ -1448,6 +1449,8 @@ void setup()
 	pinMode(D8, INPUT);
 
 	ignoreServer = false;
+
+	connectionTimout = millis();
 }
 
 void loop()
@@ -1543,9 +1546,11 @@ void loop()
 			if (!client.connected())
 			{
 				reconnect();
-				USBConnection = false;
-				WIFIConnection = false;
-				firstStart = true;
+				if(WIFIConnection){
+					USBConnection = false;
+					WIFIConnection = false;
+					firstStart = true;
+				}
 			}
 			else
 			{
@@ -1560,6 +1565,13 @@ void loop()
 			isr_flag = 0;
 			attachInterrupt(APDS9960_INT, interruptRoutine, FALLING);
 		}
+		if(millis()-connectionTimout>20000)
+		{
+			USBConnection = false;
+			WIFIConnection = false;
+			firstStart = true;
+		}
+
 	}
 
 	checkTaster(0);
