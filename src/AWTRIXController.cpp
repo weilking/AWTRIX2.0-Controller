@@ -33,9 +33,11 @@
 BME280<> BMESensor;
 Adafruit_HTU21DF htu = Adafruit_HTU21DF();
 
+
+//int audioState = false;		// 0 = false ; 1 = true
+//int gestureState = false;   // 0 = false ; 1 = true
+
 int tempState = false;		// 0 = None ; 1 = BME280 ; 2 = htu21d
-int audioState = false;		// 0 = false ; 1 = true
-int gestureState = false;   // 0 = false ; 1 = true
 int ldrState = 1000;		// 0 = None
 bool USBConnection = false; // true = usb...
 bool WIFIConnection = false;
@@ -213,13 +215,14 @@ bool saveConfig()
 	JsonObject &json = jsonBuffer.createObject();
 	json["awtrix_server"] = awtrix_server;
 	json["MatrixType"] = MatrixType2;
-	json["temp"] = tempState;
-	//json["usbWifi"] = USBConnection;
-	json["ldr"] = ldrState;
-	json["gesture"] = gestureState;
-	json["audio"] = audioState;
 	json["matrixCorrection"] = matrixTempCorrection;
 
+	//json["temp"] = tempState;
+	//json["usbWifi"] = USBConnection;
+	//json["ldr"] = ldrState;
+	//json["gesture"] = gestureState;
+	//json["audio"] = audioState;
+	
 	File configFile = SPIFFS.open("/awtrix.json", "w");
 	if (!configFile)
 	{
@@ -913,11 +916,11 @@ void updateMatrix(byte payload[], int length)
 		}
 		case 14:
 		{
-			tempState = (int)payload[1];
-			audioState = (int)payload[2];
-			gestureState = (int)payload[3];
-			ldrState = int(payload[4] << 8) + int(payload[5]);
-			matrixTempCorrection = (int)payload[6];
+			//tempState = (int)payload[1];
+			//audioState = (int)payload[2];
+			//gestureState = (int)payload[3];
+			ldrState = int(payload[1] << 8) + int(payload[2]);
+			matrixTempCorrection = (int)payload[3];
 			matrix->clear();
 			matrix->setCursor(6, 6);
 			matrix->setTextColor(matrix->Color(0, 255, 50));
@@ -1137,10 +1140,10 @@ void setup()
 				}
 				strcpy(awtrix_server, json["awtrix_server"]);
 				//USBConnection = json["usbWifi"].as<bool>();
-				audioState = json["audio"].as<int>();
-				gestureState = json["gesture"].as<int>();
-				ldrState = json["ldr"].as<int>();
-				tempState = json["temp"].as<int>();
+				//audioState = json["audio"].as<int>();
+				//gestureState = json["gesture"].as<int>();
+				//ldrState = json["ldr"].as<int>();
+				//tempState = json["temp"].as<int>();
 				MatrixType2 = json["MatrixType"].as<bool>();
 				matrixTempCorrection = json["matrixCorrection"].as<int>();
 			}
@@ -1358,7 +1361,7 @@ void setup()
 		}
 		strcpy(awtrix_server, custom_awtrix_server.getValue());
 		MatrixType2 = (strncmp(p_MatrixType2.getValue(), "T", 1) == 0);
-		USBConnection = (strncmp(p_USBConnection.getValue(), "T", 1) == 0);
+		//USBConnection = (strncmp(p_USBConnection.getValue(), "T", 1) == 0);
 		saveConfig();
 		ESP.reset();
 	}
