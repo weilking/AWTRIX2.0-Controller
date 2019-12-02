@@ -46,7 +46,7 @@ int connectionTimout;
 bool MatrixType2 = false;
 int matrixTempCorrection = 0;
 
-String version = "0.17";
+String version = "0.20";
 char awtrix_server[16];
 
 IPAddress Server;
@@ -1277,7 +1277,7 @@ void setup()
 	wifiManager.setAPStaticIPConfig(IPAddress(172, 217, 28, 1), IPAddress(172, 217, 28, 1), IPAddress(255, 255, 255, 0));
 	WiFiManagerParameter custom_awtrix_server("server", "AWTRIX Server", awtrix_server, 16);
 	WiFiManagerParameter p_MatrixType2("MatrixType2", "MatrixType 2", "T", 2, "type=\"checkbox\" ", WFM_LABEL_BEFORE);
-	WiFiManagerParameter p_USBConnection("USBConnection", "Serial Connection", "T", 2, "type=\"checkbox\" ", WFM_LABEL_BEFORE);
+
 	// Just a quick hint
 	WiFiManagerParameter p_hint("<small>Please configure your AWTRIX Server IP (without Port), and check MatrixType 2 if you cant read anything on the Matrix<br></small><br><br>");
 	WiFiManagerParameter p_lineBreak_notext("<p></p>");
@@ -1288,7 +1288,7 @@ void setup()
 	wifiManager.addParameter(&custom_awtrix_server);
 	wifiManager.addParameter(&p_lineBreak_notext);
 	wifiManager.addParameter(&p_MatrixType2);
-	wifiManager.addParameter(&p_USBConnection);
+
 	wifiManager.addParameter(&p_lineBreak_notext);
 	hardwareAnimatedSearch(0, 24, 0);
 
@@ -1306,10 +1306,7 @@ void setup()
 	if (!USBConnection)
 	{
 		Serial.println("connected...yeey :)");
-
 		Serial.println(awtrix_server);
-
-		Serial.println("connected...yeey :)");
 	}
 
 	server.on("/", HTTP_GET, []() {
