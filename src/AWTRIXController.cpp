@@ -711,15 +711,12 @@ void updateMatrix(byte payload[], int length)
 		int y_offset = 5;
 		if (firstStart)
 		{
-			if(!WIFIConnection){
-				USBConnection = true;
-			}
 			//hardwareAnimatedCheck(1, 30, 2);
 			firstStart = false;
 		}
 
 		connectionTimout = millis();
-		
+
 		switch (payload[0])
 		{
 		case 0:
@@ -1526,6 +1523,7 @@ void loop()
 							}
 							up++;
 						}
+						USBConnection = true;
 						updateMatrix(tempData, SavemMessageLength);
 						awtrixFound = false;
 					}
@@ -1543,8 +1541,10 @@ void loop()
 		//Wifi
 		if (WIFIConnection || firstStart)
 		{
+			//Serial.println("wifi oder first...");
 			if (!client.connected())
 			{
+				//Serial.println("nicht verbunden...");
 				reconnect();
 				if(WIFIConnection){
 					USBConnection = false;
