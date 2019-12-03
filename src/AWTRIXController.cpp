@@ -33,10 +33,6 @@
 BME280<> BMESensor;
 Adafruit_HTU21DF htu = Adafruit_HTU21DF();
 
-
-//int audioState = false;		// 0 = false ; 1 = true
-//int gestureState = false;   // 0 = false ; 1 = true
-
 int tempState = false;		// 0 = None ; 1 = BME280 ; 2 = htu21d
 int ldrState = 1000;		// 0 = None
 bool USBConnection = false; // true = usb...
@@ -1085,6 +1081,7 @@ void saveConfigCallback()
 
 void configModeCallback(WiFiManager *myWiFiManager)
 {
+	
 	if (!USBConnection)
 	{
 		Serial.println("Entered config mode");
@@ -1096,6 +1093,7 @@ void configModeCallback(WiFiManager *myWiFiManager)
 	matrix->setTextColor(matrix->Color(0, 255, 50));
 	matrix->print("Hotspot");
 	matrix->show();
+	
 }
 
 void setup()
@@ -1105,11 +1103,16 @@ void setup()
 	Serial.begin(115200);
 	mySoftwareSerial.begin(9600);
 
+	//is needed for only one hotpsot!
+	WiFi.mode(WIFI_STA);
+
+
 	if (!USBConnection)
 	{
 		Serial.println("");
 		Serial.println(version);
 	}
+
 
 	if (SPIFFS.begin())
 	{
@@ -1157,6 +1160,8 @@ void setup()
 			Serial.println("mounting not possible");
 		}
 	}
+
+	
 	Serial.println("Matrix Type");
 
 	if (!MatrixType2)
@@ -1274,10 +1279,11 @@ void setup()
 		ESP.reset();
 	}
 
+	
 	wifiManager.setAPStaticIPConfig(IPAddress(172, 217, 28, 1), IPAddress(172, 217, 28, 1), IPAddress(255, 255, 255, 0));
 	WiFiManagerParameter custom_awtrix_server("server", "AWTRIX Host", awtrix_server, 16);
 	WiFiManagerParameter p_MatrixType2("MatrixType2", "MatrixType 2", "T", 2, "type=\"checkbox\" ", WFM_LABEL_BEFORE);
-
+	
 	// Just a quick hint
 	WiFiManagerParameter p_hint("<small>Please configure your AWTRIX Host IP (without Port), and check MatrixType 2 If the arrangement of the pixels is different<br></small><br><br>");
 	WiFiManagerParameter p_lineBreak_notext("<p></p>");
@@ -1291,9 +1297,10 @@ void setup()
 
 	wifiManager.addParameter(&p_lineBreak_notext);
  	//wifiManager.setCustomHeadElement("<style>html{ background-color: #607D8B;}</style>");
-
+	
 	hardwareAnimatedSearch(0, 24, 0);
 
+	
 	if (!wifiManager.autoConnect("AWTRIX Controller", "awtrixxx"))
 	{
 		if (!USBConnection)
@@ -1305,15 +1312,20 @@ void setup()
 		ESP.reset();
 		delay(5000);
 	}
-
+	
 	wifiManager.disconnect();
 
+	WiFi.reconnect();
+	
+	//wifiManager.setTimeout(0);
+	
 	if (!USBConnection)
 	{
 		Serial.println("connected...yeey :)");
 		Serial.println(awtrix_server);
 	}
 
+	
 	server.on("/", HTTP_GET, []() {
 		server.sendHeader("Connection", "close");
 		server.send(200, "text/html", serverIndex);
@@ -1354,7 +1366,10 @@ void setup()
       yield(); });
 
 	server.begin();
-
+	
+	
+	
+	
 	if (shouldSaveConfig)
 	{
 		if (!USBConnection)
@@ -1367,6 +1382,7 @@ void setup()
 		saveConfig();
 		ESP.reset();
 	}
+	
 
 	hardwareAnimatedCheck(0, 27, 2);
 
@@ -1405,6 +1421,8 @@ void setup()
 		hardwareAnimatedCheck(5, 29, 2);
 	}
 
+	
+
 	ArduinoOTA.onStart([&]() {
 		updating = true;
 		matrix->clear();
@@ -1415,6 +1433,9 @@ void setup()
 	});
 
 	ArduinoOTA.begin();
+
+	
+	
 	matrix->clear();
 	matrix->setCursor(7, 6);
 
@@ -1425,9 +1446,6 @@ void setup()
 	myTime3 = millis() - 500;
 	myCounter = 0;
 	myCounter2 = 0;
-
-	//getLength = true;
-	//prefix = -5;
 
 	for (int x = 32; x >= -90; x--)
 	{
