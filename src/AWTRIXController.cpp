@@ -1305,6 +1305,9 @@ void setup()
 		ESP.reset();
 		delay(5000);
 	}
+
+	wifiManager.disconnect();
+
 	if (!USBConnection)
 	{
 		Serial.println("connected...yeey :)");
