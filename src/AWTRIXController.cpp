@@ -509,8 +509,8 @@ void hardwareAnimatedCheck(int typ, int x, int y)
 				matrix->print("WiFi");
 				break;
 			case 1:
-				matrix->setCursor(1, 6);
-				matrix->print("Server");
+				matrix->setCursor(7, 6);
+				matrix->print("Host");
 				break;
 			case 2:
 				matrix->setCursor(7, 6);
@@ -559,8 +559,8 @@ void serverSearch(int rounds, int typ, int x, int y)
 {
 	matrix->clear();
 	matrix->setTextColor(0xFFFF);
-	matrix->setCursor(1, 6);
-	matrix->print("Server");
+	matrix->setCursor(5, 6);
+	matrix->print("Host");
 
 	if (typ == 0)
 	{
@@ -643,8 +643,8 @@ void hardwareAnimatedSearch(int typ, int x, int y)
 		}
 		else if (typ == 1)
 		{
-			matrix->setCursor(1, 6);
-			matrix->print("Server");
+			matrix->setCursor(4, 6);
+			matrix->print("Host");
 		}
 		switch (i)
 		{
@@ -1275,21 +1275,23 @@ void setup()
 	}
 
 	wifiManager.setAPStaticIPConfig(IPAddress(172, 217, 28, 1), IPAddress(172, 217, 28, 1), IPAddress(255, 255, 255, 0));
-	WiFiManagerParameter custom_awtrix_server("server", "AWTRIX Server", awtrix_server, 16);
+	WiFiManagerParameter custom_awtrix_server("server", "AWTRIX Host", awtrix_server, 16);
 	WiFiManagerParameter p_MatrixType2("MatrixType2", "MatrixType 2", "T", 2, "type=\"checkbox\" ", WFM_LABEL_BEFORE);
 
 	// Just a quick hint
-	WiFiManagerParameter p_hint("<small>Please configure your AWTRIX Server IP (without Port), and check MatrixType 2 if you cant read anything on the Matrix<br></small><br><br>");
+	WiFiManagerParameter p_hint("<small>Please configure your AWTRIX Host IP (without Port), and check MatrixType 2 If the arrangement of the pixels is different<br></small><br><br>");
 	WiFiManagerParameter p_lineBreak_notext("<p></p>");
 
 	wifiManager.setSaveConfigCallback(saveConfigCallback);
 	wifiManager.setAPCallback(configModeCallback);
-	wifiManager.addParameter(&p_hint);
+
 	wifiManager.addParameter(&custom_awtrix_server);
 	wifiManager.addParameter(&p_lineBreak_notext);
 	wifiManager.addParameter(&p_MatrixType2);
 
 	wifiManager.addParameter(&p_lineBreak_notext);
+ 	//wifiManager.setCustomHeadElement("<style>html{ background-color: #607D8B;}</style>");
+
 	hardwareAnimatedSearch(0, 24, 0);
 
 	if (!wifiManager.autoConnect("AWTRIX Controller", "awtrixxx"))
@@ -1428,10 +1430,10 @@ void setup()
 	{
 		matrix->clear();
 		matrix->setCursor(x, 6);
-		matrix->print("Server-IP: " + String(awtrix_server));
+		matrix->print("Host-IP: " + String(awtrix_server));
 		matrix->setTextColor(matrix->Color(0, 255, 50));
 		matrix->show();
-		delay(65);
+		delay(40);
 	}
 
 	client.setServer(awtrix_server, 7001);
