@@ -100,13 +100,6 @@ int cfgStart = 0;
 //flag for saving data
 bool shouldSaveConfig = false;
 
-//Brigthness Controll in Controller
-int minBrightness = 10;
-int maxBrightness = 255;
-int currentBrightness = 100;
-int targetBrightness;
-int brightnessTime;
-
 /// LDR Config
 #define LDR_RESISTOR 1000 //ohms
 #define LDR_PIN A0
@@ -162,48 +155,6 @@ byte utf8ascii(byte ascii)
 	return (0);
 }
 
-void getBrightness()
-{
-	int lux = photocell.getCurrentLux();
-	float a = 1.0 * lux / 800;
-	targetBrightness = a * 255;
-}
-
-void calcBrightness(int brightness)
-{
-	if (brightness == -1)
-	{
-		if ((targetBrightness - currentBrightness) > 5 || (targetBrightness - currentBrightness) < -5)
-		{
-			if (targetBrightness > currentBrightness)
-			{
-				currentBrightness = currentBrightness + 2;
-				if (currentBrightness > maxBrightness)
-				{
-					currentBrightness = maxBrightness;
-				}
-			}
-			else
-			{
-				currentBrightness = currentBrightness - 2;
-				if (currentBrightness < minBrightness)
-				{
-					currentBrightness = minBrightness;
-				}
-			}
-			matrix->setBrightness(currentBrightness);
-			//matrix->show();
-		}
-	}
-	else
-	{
-		if (brightness > currentBrightness)
-		{
-			brightness = currentBrightness;
-		}
-		matrix->setBrightness(brightness);
-	}
-}
 
 bool saveConfig()
 {
@@ -1607,17 +1558,10 @@ void loop()
 	{
 		if (pressedTaster > 0)
 		{
-			/*
-			Serial.print("Taster gedrückt...(");
-			Serial.print(pressedTaster);
-			Serial.println(")");
-			Serial.print("Menue: ");
-			Serial.println(menuePointer);
-			*/
 			matrix->clear();
 			matrix->setCursor(0, 6);
 			matrix->setTextColor(matrix->Color(0, 255, 50));
-			matrix->print(myMenue.getMenueString(&menuePointer, &pressedTaster, &minBrightness, &maxBrightness));
+			//matrix->print(myMenue.getMenueString(&menuePointer, &pressedTaster, &minBrightness, &maxBrightness));
 			matrix->show();
 		}
 
@@ -1627,12 +1571,4 @@ void loop()
 			Serial.read();
 		}
 	}
-	/*
-	if (millis() - brightnessTime > 100)
-	{
-		brightnessTime = millis();
-		getBrightness();
-		calcBrightness(-1);
-	}
-	*/
 }
