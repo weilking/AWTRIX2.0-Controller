@@ -160,9 +160,9 @@ bool saveConfig()
 {
 	DynamicJsonBuffer jsonBuffer;
 	JsonObject &json = jsonBuffer.createObject();
-	json["awtrix_server"] = awtrix_server;
-	json["MatrixType"] = MatrixType2;
-	json["matrixCorrection"] = matrixTempCorrection;
+	//json["awtrix_server"] = awtrix_server;
+	//json["MatrixType"] = MatrixType2;
+	//json["matrixCorrection"] = matrixTempCorrection;
 
 	//json["temp"] = tempState;
 	//json["usbWifi"] = USBConnection;
