@@ -105,7 +105,7 @@ bool shouldSaveConfig = false;
 
 typedef struct {
   char hostIP[16]; 
-  boolean matrixTyp;
+  boolean matrixTyp = false;
   int matrixTempCorrection;
 } save_t;
 
