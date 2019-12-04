@@ -1264,11 +1264,6 @@ void setup()
 		delay(5000);
 	}
 	
-	wifiManager.disconnect();
-
-	WiFi.reconnect();
-	
-	//wifiManager.setTimeout(0);
 	
 	if (!USBConnection)
 	{
