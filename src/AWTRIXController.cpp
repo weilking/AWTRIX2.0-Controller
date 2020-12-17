@@ -94,9 +94,11 @@ int myCounter2;
 
 bool ignoreServer = false;
 int menuePointer;
+int minBrightness = 10;
+int maxBrightness = 200;
 
 //Taster_mid
-int tasterPin[] = {D0, D4, D8};
+int tasterPin[] = {D5, D4, D7};
 int tasterCount = 3;
 
 int timeoutTaster[] = {0, 0, 0, 0};
@@ -147,9 +149,9 @@ bool updating = false;
 
 // Audio
 //DFPlayerMini_Fast myMP3;
-DFRobotDFPlayerMini myMP3;
+//DFRobotDFPlayerMini myMP3;
 
-SoftwareSerial mySoftwareSerial(D7, D5); // RX, TX
+//SoftwareSerial mySoftwareSerial(D7, D5); // RX, TX
 
 // Matrix Settings
 CRGB leds[256];
@@ -247,9 +249,9 @@ void logToServer(String s)
 
 int checkTaster(int nr)
 {
-	tasterState[0] = !digitalRead(tasterPin[0]);
+	tasterState[0] = digitalRead(tasterPin[0]);
 	tasterState[1] = digitalRead(tasterPin[1]);
-	tasterState[2] = !digitalRead(tasterPin[2]);
+	tasterState[2] = digitalRead(tasterPin[2]);
 
 	switch (nr)
 	{
@@ -296,17 +298,17 @@ int checkTaster(int nr)
 			case 0:
 				root["left"] = "short";
 				pressedTaster = 1;
-				//Serial.println("LEFT: normaler Tastendruck");
+				Serial.println("LEFT: normaler Tastendruck");
 				break;
 			case 1:
 				root["middle"] = "short";
 				pressedTaster = 2;
-				//Serial.println("MID: normaler Tastendruck");
+				Serial.println("MID: normaler Tastendruck");
 				break;
 			case 2:
 				root["right"] = "short";
 				pressedTaster = 3;
-				//Serial.println("RIGHT: normaler Tastendruck");
+				Serial.println("RIGHT: normaler Tastendruck");
 				break;
 			}
 
@@ -332,15 +334,15 @@ int checkTaster(int nr)
 			{
 			case 0:
 				root["left"] = "long";
-				//Serial.println("LEFT: langer Tastendruck");
+				Serial.println("LEFT: langer Tastendruck");
 				break;
 			case 1:
 				root["middle"] = "long";
-				//Serial.println("MID: langer Tastendruck");
+				Serial.println("MID: langer Tastendruck");
 				break;
 			case 2:
 				root["right"] = "long";
-				//Serial.println("RIGHT: langer Tastendruck");
+				Serial.println("RIGHT: langer Tastendruck");
 				break;
 			case 3:
 				if (allowTasterSendToServer)
@@ -836,9 +838,9 @@ void updateMatrix(byte payload[], int length)
 		{
 			//deprecated
 			//Command 10: Play
-			myMP3.volume(payload[2]);
+			//myMP3.volume(payload[2]);
 			delay(10);
-			myMP3.play(payload[1]);
+			//myMP3.play(payload[1]);
 			break;
 		}
 		case 11:
@@ -954,22 +956,22 @@ void updateMatrix(byte payload[], int length)
 		case 17:
 		{
 			//Command 17: Volume
-			myMP3.volume(payload[1]);
+			//myMP3.volume(payload[1]);
 
 			break;
 		}
 		case 18:
 		{
 			//Command 18: Play
-			myMP3.playMp3Folder(payload[1]);
+			//myMP3.playMp3Folder(payload[1]);
 			break;
 		}
 		case 19:
 		{
 			//Command 18: Stop
-			myMP3.stopAdvertise();
+			//myMP3.stopAdvertise();
 			delay(50);
-			myMP3.stop();
+			//myMP3.stop();
 			break;
 		}
 		case 20:
@@ -1100,12 +1102,12 @@ void updateMatrix(byte payload[], int length)
 		}
 		case 24:
 		{
-			myMP3.loop(payload[1]);
+			//myMP3.loop(payload[1]);
 			break;
 		}
 		case 25:
 		{
-			myMP3.advertise(payload[1]);
+			//myMP3.advertise(payload[1]);
 			break;
 		}
 		}
@@ -1247,7 +1249,7 @@ void setup()
 
 	Serial.setRxBufferSize(1024);
 	Serial.begin(115200);
-	mySoftwareSerial.begin(9600);
+	//mySoftwareSerial.begin(9600);
 
 	if (SPIFFS.begin())
 	{
@@ -1547,10 +1549,10 @@ void setup()
 		hardwareAnimatedCheck(MsgType_Temp, 29, 2);
 	}
 
-	if (myMP3.begin(mySoftwareSerial))
+/*	if (myMP3.begin(mySoftwareSerial))
 	{ //Use softwareSerial to communicate with mp3.
 		hardwareAnimatedCheck(MsgType_Audio, 29, 2);
-	}
+	}*/
 
 	attachInterrupt(APDS9960_INT, interruptRoutine, FALLING);
 	apds.enableGestureSensor(true);
@@ -1746,7 +1748,7 @@ void loop()
 			matrix->clear();
 			matrix->setCursor(0, 6);
 			matrix->setTextColor(matrix->Color(0, 255, 50));
-			//matrix->print(myMenue.getMenueString(&menuePointer, &pressedTaster, &minBrightness, &maxBrightness));
+			matrix->print(myMenue.getMenueString(&menuePointer, &pressedTaster, &minBrightness, &maxBrightness));
 			matrix->show();
 		}
 
